@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Animal Kombat - PWA</title>
+  
+  <!-- PWA & Mobile Meta Tags -->
+  <meta name="theme-color" content="#121212">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Animal Kombat">
+  <meta name="description" content="Jogo de luta arcade PWA de animais com superpoderes biológicos.">
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d0d11;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+    }
+
+    /* Screen: Selection */
+    #selection-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #12121e 0%, #050508 100%);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px;
+      overflow-y: auto;
+    }
+
+    .title-banner {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .title-banner h1 {
+      font-size: 2rem;
+      color: #ff3333;
+      text-shadow: 0 0 10px rgba(255, 51, 51, 0.6), 2px 2px 0 #000;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .title-banner p {
+      font-size: 0.85rem;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    .roster-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 500px;
+      margin: 10px 0;
+    }
+
+    @media (max-width: 400px) {
+      .roster-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .fighter-card {
+      background: #1a1a26;
+      border: 2px solid #33334d;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .fighter-card.selected {
+      border-color: #ff3333;
+      background: #2a1a26;
+      transform: scale(1.04);
+      box-shadow: 0 0 12px rgba(255, 51, 51, 0.4);
+    }
+
+    .fighter-card img, .fighter-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+
+    .fighter-card .name {
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-align: center;
+      color: #eee;
+    }
+
+    .action-footer {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-main {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 25px;
+      background: linear-gradient(90deg, #ff3333, #cc0000);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      box-shadow: 0 4px 12px rgba(255, 51, 51, 0.4);
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .btn-main:active {
+      transform: scale(0.98);
+    }
+
+    .btn-pwa {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ff9900;
+      border-radius: 20px;
+      background: rgba(255, 153, 0, 0.15);
+      color: #ffb366;
+      font-size: 0.85rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: none; /* Shown if PWA install prompt is available */
+    }
+
+    .credits {
+      font-size: 0.65rem;
+      color: #777;
+      text-align: center;
+      letter-spacing: 0.5px;
+    }
+
+    /* Arena & Gameplay HUD */
+    #canvas-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #111;
+    }
+
+    #hud {
+      position: absolute;
+      top: 10px;
+      left: 0;
+      width: 100%;
+      padding: 0 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .health-box {
+      width: 42%;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .health-box.p2 {
+      align-items: flex-end;
+    }
+
+    .fighter-label {
+      font-size: 0.8rem;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 2px #000;
+    }
+
+    .bar-bg {
+      width: 100%;
+      height: 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid #000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #00ff66, #009933);
+      transition: width 0.1s linear;
+    }
+
+    .bar-fill.p2 {
+      background: linear-gradient(90deg, #ff3333, #990000);
+    }
+
+    #move-banner {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      border: 1px solid #ffcc00;
+      color: #ffcc00;
+      padding: 6px 16px;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      pointer-events: none;
+      z-index: 5;
+      display: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    
+    <!-- Tela de Seleção / Início -->
+    <div id="selection-screen">
+      <div class="title-banner">
+        <h1>Animal Kombat</h1>
+        <p>Escolha seu lutador biológico</p>
+      </div>
+
+      <div class="roster-grid" id="roster">
+        <!-- Renderizado Dinamicamente via JS -->
+      </div>
+
+      <div class="action-footer">
+        <button class="btn-main" id="btn-start">INICIAR LUTA!</button>
+        <button class="btn-pwa" id="btn-install">📱 Adicionar à tela inicial</button>
+        <div class="credits">desenvolvido por Ronaldo Paz</div>
+      </div>
+    </div>
+
+    <!-- Arena de Combate -->
+    <div id="canvas-container">
+      <div id="hud">
+        <div class="health-box p1">
+          <div class="fighter-label" id="p1-name">P1</div>
+          <div class="bar-bg"><div class="bar-fill" id="p1-bar"></div></div>
+        </div>
+        <div style="font-weight: bold; font-size: 1.2rem; color: #ffcc00;">VS</div>
+        <div class="health-box p2">
+          <div class="fighter-label" id="p2-name">CPU</div>
+          <div class="bar-bg"><div class="bar-fill p2" id="p2-bar"></div></div>
+        </div>
+      </div>
+
+      <div id="move-banner"></div>
+      <canvas id="gameCanvas"></canvas>
+    </div>
+
+  </div>
+
+  <script>
+    // --- 1. Dados dos Lutadores ---
+    const ROSTER_DATA = [
+      { id: 'sapo', name: 'Sapo-Wolverine', icon: '🐸', hp: 300, color: '#4caf50', move: 'Garras Ósseas' },
+      { id: 'lagosta', name: 'Lagosta-Boxeadora', icon: '🦞', hp: 300, color: '#f44336', move: 'Soco Cavitacional' },
+      { id: 'camarao', name: 'Camarão-Pistola', icon: '🦐', hp: 300, color: '#ff9800', move: 'Disparo de Plasma' },
+      { id: 'besouro', name: 'Besouro-Bombardeiro', icon: '🪲', hp: 300, color: '#795548', move: 'Jato Químico' },
+      { id: 'enguia', name: 'Enguia-Elétrica', icon: '🐍', hp: 300, color: '#00bcd4', move: 'Choque de 860V' },
+      { id: 'polvo', name: 'Polvo-Anéis-Azuis', icon: '🐙', hp: 300, color: '#2196f3', move: 'Tetrodotoxina' },
+      { id: 'tardigrado', name: 'Tardígrado', icon: '🦠', hp: 300, color: '#9c27b0', move: 'Criptobiose Defensiva' },
+      { id: 'lagarto', name: 'Lagarto-Jesus', icon: '🦎', hp: 300, color: '#8bc34a', move: 'Corrida Aquática' }
+    ];
+
+    let selectedFighterIndex = 0;
+    let isPlaying = false;
+
+    // --- 2. Elementos DOM ---
+    const selectionScreen = document.getElementById('selection-screen');
+    const rosterGrid = document.getElementById('roster');
+    const btnStart = document.getElementById('btn-start');
+    const btnInstall = document.getElementById('btn-install');
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const p1NameLabel = document.getElementById('p1-name');
+    const p2NameLabel = document.getElementById('p2-name');
+    const p1Bar = document.getElementById('p1-bar');
+    const p2Bar = document.getElementById('p2-bar');
+    const moveBanner = document.getElementById('move-banner');
+
+    // --- 3. Inicialização e Renderização do Selecionador ---
+    function initRosterUI() {
+      rosterGrid.innerHTML = '';
+      ROSTER_DATA.forEach((fighter, idx) => {
+        const card = document.createElement('div');
+        card.className = `fighter-card ${idx === selectedFighterIndex ? 'selected' : ''}`;
+        card.onclick = () => {
+          selectedFighterIndex = idx;
+          initRosterUI();
+        };
+
+        card.innerHTML = `
+          <div class="fighter-avatar">${fighter.icon}</div>
+          <div class="name">${fighter.name}</div>
+        `;
+        rosterGrid.appendChild(card);
+      });
+    }
+
+    // --- 4. Motor de Jogo & Física ---
+    let p1, p2;
+    let animationFrameId = null;
+
+    function resizeCanvas() {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    class Fighter {
+      constructor(data, x, isCPU = false) {
+        this.data = data;
+        this.x = x;
+        this.y = 0;
+        this.width = 60;
+        this.height = 80;
+        this.vx = 0;
+        this.vy = 0;
+        this.maxHp = data.hp;
+        this.hp = data.hp;
+        this.isCPU = isCPU;
+        this.isShielding = false;
+        this.isAttacking = false;
+        this.cooldown = 0;
+      }
+
+      update(groundY) {
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // Gravidade Simples
+        if (this.y < groundY - this.height) {
+          this.vy += 1;
+        } else {
+          this.y = groundY - this.height;
+          this.vy = 0;
+        }
+
+        // Limite da Arena
+        if (this.x < 10) this.x = 10;
+        if (this.x > canvas.width - this.width - 10) this.x = canvas.width - this.width - 10;
+
+        if (this.cooldown > 0) this.cooldown--;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.fillStyle = this.data.color;
+        
+        // Desenha Corpo Simples
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        // Indicador de Escudo
+        if (this.isShielding) {
+          ctx.strokeStyle = '#00ffff';
+          ctx.lineWidth = 4;
+          ctx.strokeRect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
+        }
+
+        // Desenha Ícone do Animal
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.data.icon, this.x + this.width / 2, this.y + this.height / 2 + 10);
+
+        ctx.restore();
+      }
+    }
+
+    function showMoveBanner(text) {
+      moveBanner.innerText = text;
+      moveBanner.style.display = 'block';
+      setTimeout(() => {
+        moveBanner.style.display = 'none';
+      }, 1500);
+    }
+
+    function startFightMatch() {
+      resizeCanvas();
+      selectionScreen.style.display = 'none';
+      isPlaying = true;
+
+      const groundY = canvas.height * 0.8;
+
+      const p1Data = ROSTER_DATA[selectedFighterIndex];
+      // CPU escolhe outro aleatório
+      let cpuIdx = Math.floor(Math.random() * ROSTER_DATA.length);
+      const p2Data = ROSTER_DATA[cpuIdx];
+
+      p1 = new Fighter(p1Data, canvas.width * 0.25);
+      p2 = new Fighter(p2Data, canvas.width * 0.65, true);
+
+      p1NameLabel.innerText = p1Data.name;
+      p2NameLabel.innerText = p2Data.name;
+
+      setupGestureControls();
+      gameLoop();
+    }
+
+    // --- 5. Sistema de Gestos (Touch Controls) ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    function setupGestureControls() {
+      canvas.addEventListener('touchstart', (e) => {
+        if (!isPlaying) return;
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', (e) => {
+        if (!isPlaying || !p1) return;
+        const touch = e.changedTouches[0];
+        const diffX = touch.clientX - touchStartX;
+        const diffY = touch.clientY - touchStartY;
+
+        // Toco Curto = Ataque
+        if (Math.abs(diffX) < 20 && Math.abs(diffY) < 20) {
+          executeAttack(p1, p2);
+          return;
+        }
+
+        // Puxar para Cima = Pulo
+        if (diffY < -40 && Math.abs(diffX) < 40) {
+          if (p1.y >= canvas.height * 0.8 - p1.height) {
+            p1.vy = -18;
+          }
+        }
+        // Puxar para Baixo = Escudo
+        else if (diffY > 40 && Math.abs(diffX) < 40) {
+          p1.isShielding = true;
+          setTimeout(() => { p1.isShielding = false; }, 1000);
+        }
+        // Deslizar para Frente = Mover Direita
+        else if (diffX > 40) {
+          p1.vx = 8;
+          setTimeout(() => { p1.vx = 0; }, 200);
+        }
+        // Deslizar para Trás = Mover Esquerda
+        else if (diffX < -40) {
+          p1.vx = -8;
+          setTimeout(() => { p1.vx = 0; }, 200);
+        }
+      }, { passive: true });
+    }
+
+    function executeAttack(attacker, defender) {
+      if (attacker.cooldown > 0) return;
+      attacker.cooldown = 30; // Controla ritmo do round
+
+      const dist = Math.abs(attacker.x - defender.x);
+      if (dist < 100) {
+        let damage = 18;
+        if (defender.isShielding) damage = 3;
+
+        defender.hp = Math.max(0, defender.hp - damage);
+        
+        if (!attacker.isCPU) {
+          showMoveBanner(`${attacker.data.name}: ${attacker.data.move}!`);
+        }
+      }
+    }
+
+    // IA Simples da CPU
+    function updateCPUAI() {
+      if (!p2 || !p1) return;
+
+      const dist = p1.x - p2.x;
+      if (Math.abs(dist) > 80) {
+        p2.vx = dist > 0 ? 3 : -3;
+      } else {
+        p2.vx = 0;
+        if (Math.random() < 0.05) {
+          executeAttack(p2, p1);
+        }
+      }
+    }
+
+    // --- 6. Game Loop ---
+    function gameLoop() {
+      if (!isPlaying) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const groundY = canvas.height * 0.8;
+
+      // Desenha Chão
+      ctx.fillStyle = '#222233';
+      ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
+
+      // Atualiza e Desenha Lutadores
+      p1.update(groundY);
+      p2.update(groundY);
+      updateCPUAI();
+
+      p1.draw();
+      p2.draw();
+
+      // Atualiza Barras de Vida
+      p1Bar.style.width = `${(p1.hp / p1.maxHp) * 100}%`;
+      p2Bar.style.width = `${(p2.hp / p2.maxHp) * 100}%`;
+
+      // Condição de Fim de Luta
+      if (p1.hp <= 0 || p2.hp <= 0) {
+        isPlaying = false;
+        alert(p1.hp > 0 ? 'VOCÊ VENCEU!' : 'CPU VENCEU!');
+        selectionScreen.style.display = 'flex';
+        return;
+      }
+
+      animationFrameId = requestAnimationFrame(gameLoop);
+    }
+
+    btnStart.onclick = startFightMatch;
+
+    // --- 7. Suporte a PWA (Instalação e Service Worker) ---
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.style.display = 'block';
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          btnInstall.style.display = 'none';
+        }
+        deferredPrompt = null;
+      }
+    });
+
+    // Registra Service Worker via Blob pra rodar tudo num só arquivo
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request)));
+      `;
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+
+    // Inicialização da UI ao carregar
+    document.addEventListener('DOMContentLoaded', initRosterUI);
+    initRosterUI();
+  </script>
+</body>
+  </html>
+  
