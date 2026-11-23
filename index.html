@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Animal Kombat - PWA</title>
   
-  <!-- PWA & Mobile Meta Tags -->
+  <!-- Configurações PWA & Mobile -->
+  <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#121212">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -113,7 +114,7 @@
       box-shadow: 0 0 12px rgba(255, 51, 51, 0.4);
     }
 
-    .fighter-card img, .fighter-avatar {
+    .fighter-avatar {
       width: 48px;
       height: 48px;
       border-radius: 50%;
@@ -171,7 +172,7 @@
       font-size: 0.85rem;
       font-weight: bold;
       cursor: pointer;
-      display: none; /* Shown if PWA install prompt is available */
+      display: none;
     }
 
     .credits {
@@ -272,21 +273,19 @@
 
   <div id="game-container">
     
-    <!-- Tela de Seleção / Início -->
+    <!-- Tela de Seleção -->
     <div id="selection-screen">
       <div class="title-banner">
         <h1>Animal Kombat</h1>
         <p>Escolha seu lutador biológico</p>
       </div>
 
-      <div class="roster-grid" id="roster">
-        <!-- Renderizado Dinamicamente via JS -->
-      </div>
+      <div class="roster-grid" id="roster"></div>
 
       <div class="action-footer">
         <button class="btn-main" id="btn-start">INICIAR LUTA!</button>
         <button class="btn-pwa" id="btn-install">📱 Adicionar à tela inicial</button>
-        <div class="credits">desenvolvido por Ronaldo Paz</div>
+        <div class="credits">Desenvolvido por Ronaldo Paz</div>
       </div>
     </div>
 
@@ -311,9 +310,8 @@
   </div>
 
   <script>
-    // --- 1. Dados dos Lutadores ---
     const ROSTER_DATA = [
-      { id: 'sapo', name: 'Sapo-Wolverine', icon: '🐸', hp: 300, color: '#4caf50', move: 'Garras Ósseas' },
+      { id: 'sapo', name: 'Sapo-Wolverine', icon: '🐸', hp: 300, color: '#4caf50', move: 'Gavras Ósseas' },
       { id: 'lagosta', name: 'Lagosta-Boxeadora', icon: '🦞', hp: 300, color: '#f44336', move: 'Soco Cavitacional' },
       { id: 'camarao', name: 'Camarão-Pistola', icon: '🦐', hp: 300, color: '#ff9800', move: 'Disparo de Plasma' },
       { id: 'besouro', name: 'Besouro-Bombardeiro', icon: '🪲', hp: 300, color: '#795548', move: 'Jato Químico' },
@@ -326,7 +324,6 @@
     let selectedFighterIndex = 0;
     let isPlaying = false;
 
-    // --- 2. Elementos DOM ---
     const selectionScreen = document.getElementById('selection-screen');
     const rosterGrid = document.getElementById('roster');
     const btnStart = document.getElementById('btn-start');
@@ -340,7 +337,6 @@
     const p2Bar = document.getElementById('p2-bar');
     const moveBanner = document.getElementById('move-banner');
 
-    // --- 3. Inicialização e Renderização do Selecionador ---
     function initRosterUI() {
       rosterGrid.innerHTML = '';
       ROSTER_DATA.forEach((fighter, idx) => {
@@ -359,7 +355,6 @@
       });
     }
 
-    // --- 4. Motor de Jogo & Física ---
     let p1, p2;
     let animationFrameId = null;
 
@@ -382,7 +377,6 @@
         this.hp = data.hp;
         this.isCPU = isCPU;
         this.isShielding = false;
-        this.isAttacking = false;
         this.cooldown = 0;
       }
 
@@ -390,7 +384,6 @@
         this.x += this.vx;
         this.y += this.vy;
 
-        // Gravidade Simples
         if (this.y < groundY - this.height) {
           this.vy += 1;
         } else {
@@ -398,7 +391,6 @@
           this.vy = 0;
         }
 
-        // Limite da Arena
         if (this.x < 10) this.x = 10;
         if (this.x > canvas.width - this.width - 10) this.x = canvas.width - this.width - 10;
 
@@ -408,22 +400,17 @@
       draw() {
         ctx.save();
         ctx.fillStyle = this.data.color;
-        
-        // Desenha Corpo Simples
         ctx.fillRect(this.x, this.y, this.width, this.height);
 
-        // Indicador de Escudo
         if (this.isShielding) {
           ctx.strokeStyle = '#00ffff';
           ctx.lineWidth = 4;
           ctx.strokeRect(this.x - 5, this.y - 5, this.width + 10, this.height + 10);
         }
 
-        // Desenha Ícone do Animal
         ctx.font = '30px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(this.data.icon, this.x + this.width / 2, this.y + this.height / 2 + 10);
-
         ctx.restore();
       }
     }
@@ -442,9 +429,7 @@
       isPlaying = true;
 
       const groundY = canvas.height * 0.8;
-
       const p1Data = ROSTER_DATA[selectedFighterIndex];
-      // CPU escolhe outro aleatório
       let cpuIdx = Math.floor(Math.random() * ROSTER_DATA.length);
       const p2Data = ROSTER_DATA[cpuIdx];
 
@@ -458,7 +443,6 @@
       gameLoop();
     }
 
-    // --- 5. Sistema de Gestos (Touch Controls) ---
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -476,29 +460,29 @@
         const diffX = touch.clientX - touchStartX;
         const diffY = touch.clientY - touchStartY;
 
-        // Toco Curto = Ataque
+        // Toque rápido = Ataque
         if (Math.abs(diffX) < 20 && Math.abs(diffY) < 20) {
           executeAttack(p1, p2);
           return;
         }
 
-        // Puxar para Cima = Pulo
+        // Puxar p/ cima = Pulo
         if (diffY < -40 && Math.abs(diffX) < 40) {
           if (p1.y >= canvas.height * 0.8 - p1.height) {
             p1.vy = -18;
           }
         }
-        // Puxar para Baixo = Escudo
+        // Puxar p/ baixo = Escudo
         else if (diffY > 40 && Math.abs(diffX) < 40) {
           p1.isShielding = true;
           setTimeout(() => { p1.isShielding = false; }, 1000);
         }
-        // Deslizar para Frente = Mover Direita
+        // Deslizar p/ direita
         else if (diffX > 40) {
           p1.vx = 8;
           setTimeout(() => { p1.vx = 0; }, 200);
         }
-        // Deslizar para Trás = Mover Esquerda
+        // Deslizar p/ esquerda
         else if (diffX < -40) {
           p1.vx = -8;
           setTimeout(() => { p1.vx = 0; }, 200);
@@ -508,7 +492,7 @@
 
     function executeAttack(attacker, defender) {
       if (attacker.cooldown > 0) return;
-      attacker.cooldown = 30; // Controla ritmo do round
+      attacker.cooldown = 30;
 
       const dist = Math.abs(attacker.x - defender.x);
       if (dist < 100) {
@@ -516,17 +500,14 @@
         if (defender.isShielding) damage = 3;
 
         defender.hp = Math.max(0, defender.hp - damage);
-        
         if (!attacker.isCPU) {
           showMoveBanner(`${attacker.data.name}: ${attacker.data.move}!`);
         }
       }
     }
 
-    // IA Simples da CPU
     function updateCPUAI() {
       if (!p2 || !p1) return;
-
       const dist = p1.x - p2.x;
       if (Math.abs(dist) > 80) {
         p2.vx = dist > 0 ? 3 : -3;
@@ -538,19 +519,14 @@
       }
     }
 
-    // --- 6. Game Loop ---
     function gameLoop() {
       if (!isPlaying) return;
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       const groundY = canvas.height * 0.8;
 
-      // Desenha Chão
       ctx.fillStyle = '#222233';
       ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
 
-      // Atualiza e Desenha Lutadores
       p1.update(groundY);
       p2.update(groundY);
       updateCPUAI();
@@ -558,11 +534,9 @@
       p1.draw();
       p2.draw();
 
-      // Atualiza Barras de Vida
       p1Bar.style.width = `${(p1.hp / p1.maxHp) * 100}%`;
       p2Bar.style.width = `${(p2.hp / p2.maxHp) * 100}%`;
 
-      // Condição de Fim de Luta
       if (p1.hp <= 0 || p2.hp <= 0) {
         isPlaying = false;
         alert(p1.hp > 0 ? 'VOCÊ VENCEU!' : 'CPU VENCEU!');
@@ -575,7 +549,7 @@
 
     btnStart.onclick = startFightMatch;
 
-    // --- 7. Suporte a PWA (Instalação e Service Worker) ---
+    // PWA Instalador
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -594,7 +568,7 @@
       }
     });
 
-    // Registra Service Worker via Blob pra rodar tudo num só arquivo
+    // Registrar Service Worker local via Blob
     if ('serviceWorker' in navigator) {
       const swCode = `
         self.addEventListener('install', (e) => self.skipWaiting());
@@ -604,10 +578,8 @@
       navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
     }
 
-    // Inicialização da UI ao carregar
     document.addEventListener('DOMContentLoaded', initRosterUI);
     initRosterUI();
   </script>
 </body>
-  </html>
-  
+</html>
